@@ -10,21 +10,6 @@ from utils.get_embedings import load_embeddings
 from matcher.base_matcher import BaseService
 
 
-def load_data(path):
-    """
-    Загрузка данных из CSV файла.
-
-    Args_
-        path (str): Путь к CSV файлу
-
-    Returns_
-        pd.DataFrame: Загруженные данные в виде DataFrame
-    """
-    data = pd.read_csv(path)
-
-    return data
-
-
 class SentenceSimilarity(BaseService):
     """
     Класс для вычисления косинусной близости и получения топ-5 категорий.
@@ -44,11 +29,27 @@ class SentenceSimilarity(BaseService):
         self.embedder = SentenceTransformer(config.embedder)
         self.config = config
         self.local_name_embedings = torch.tensor(load_embeddings(config.embeddings_path)).to("cuda:0")
+        self.data = self.load_data(self.config.dataset_path)
 
+
+    @staticmethod
+    def load_data(path):
+        """
+        Загрузка данных из CSV файла.
+
+        Args_
+            path (str): Путь к CSV файлу
+
+        Returns_
+            pd.DataFrame: Загруженные данные в виде DataFrame
+        """
+        data = pd.read_csv(path)
+
+        return data
 
     def encode_samples(self, texts: list):
         """
-        Кодирование входных текстов.
+        Получение эмбедингов по входному тексту.
 
         Args_
             texts (list): Список предложений для кодирования
@@ -61,7 +62,7 @@ class SentenceSimilarity(BaseService):
 
     def get_similarity_scores(self, embeddings_input, top_k: int):
         """
-        Вычисление косинусного расстояния между входным текстов и локальными услугами.
+        Вычисление косинусного расстояния между входным текстом и локальными услугами.
 
         Args_
             embeddings_input (list): Входной текст для получения эмбедингов
@@ -87,15 +88,11 @@ class SentenceSimilarity(BaseService):
         Returns_
             list: Список словарей, где каждый словарь содержит название услуги и ее оценку схожести
         """
-        data = load_data(self.config.dataset_path)
         scores, indices = self.get_similarity_scores(input_text, top_k)
 
         scores = scores.cpu().numpy()
         indices = indices.cpu().numpy()
 
-        top_k_dict = []
-
-        for idx, score in zip(indices, scores):
-            top_k_dict.append({"local_name": data[self.config.matcher_col_name].iloc[idx], "score": score})
+        top_k_dict = [{"local_name": self.data[self.config.matcher_col_name].iloc[idx], "score": score} for idx, score in zip(indices, scores)]
 
         return top_k_dict

@@ -16,3 +16,4 @@ class BaseService(ABC):
     @abstractmethod
     def get_top_k(self, embeddings_input, top_k):
         pass
+
