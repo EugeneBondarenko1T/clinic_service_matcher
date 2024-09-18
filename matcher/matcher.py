@@ -76,19 +76,19 @@ class SentenceSimilarity(BaseService):
         return scores, indices
 
 
-    def get_top_k(self, embeddings_input: str, top_k: int) -> list:
+    def get_top_k(self, input_text: str, top_k: int) -> list:
         """
         Возвращает top_k схожих услуг для входного предложения.
 
         Args_
-            embeddings_input (str): Входное предложение для поиска схожих услуг
+            input_text (str): Входное предложение для поиска схожих услуг
             top_k (int): Количество top_k результатов для возврата.
 
         Returns_
             list: Список словарей, где каждый словарь содержит название услуги и ее оценку схожести
         """
         data = load_data(self.config.dataset_path)
-        scores, indices = self.get_similarity_scores(embeddings_input, top_k)
+        scores, indices = self.get_similarity_scores(input_text, top_k)
 
         scores = scores.cpu().numpy()
         indices = indices.cpu().numpy()
