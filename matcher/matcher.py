@@ -29,7 +29,7 @@ class SentenceSimilarity(BaseService):
     """
     Класс для вычисления косинусной близости и получения топ-5 категорий.
 
-    Attributes:
+    Attributes_
         embedder (SentenceTransformer): Модель для кодирования предложений
         config (MatcherConfig): Объект конфигурации, содержащий параметры для решения задачи мэтчинга
         local_name_embedings (torch.Tensor): Эмбеддинги для локальных названий услуг
@@ -38,7 +38,7 @@ class SentenceSimilarity(BaseService):
         """
         Инициализация класса SentenceSimilarity.
 
-        Args:
+        Args_
             config (MatcherConfig): Объект конфигурации, содержащий параметры для решения задачи мэтчинга
         """
         self.embedder = SentenceTransformer(config.embedder)
