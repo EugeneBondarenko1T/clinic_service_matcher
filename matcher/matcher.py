@@ -1,12 +1,13 @@
 """Этот скрипт содержит класс для решения задачи метчинга при помощи косинусного расстояния
 с использованием эмбедера deepvk/USER-bge-m3.
 """
-
+#%%
 import pandas as pd
 import torch
 from sentence_transformers import SentenceTransformer
 from configs.config_matcher import MatcherConfig
 from utils.get_embedings import load_embeddings
+from matcher.base_matcher import BaseService
 
 
 def load_data(path):
@@ -24,7 +25,7 @@ def load_data(path):
     return data
 
 
-class SentenceSimilarity:
+class SentenceSimilarity(BaseService):
     """
     Класс для вычисления косинусной близости и получения топ-5 категорий.
 
@@ -98,3 +99,8 @@ class SentenceSimilarity:
             top_k_dict.append({"local_name": data[self.config.matcher_col_name].iloc[idx], "score": score})
 
         return top_k_dict
+
+
+tmp = SentenceSimilarity(MatcherConfig)
+tmp.get_top_k("Анализ крови", top_k=10)
+#%%
