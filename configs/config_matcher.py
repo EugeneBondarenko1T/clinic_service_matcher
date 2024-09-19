@@ -6,3 +6,4 @@ class MatcherConfig:
     embedder: str = field(default="deepvk/USER-bge-m3")
     matcher_col_name: str = field(default="local_name")
     embeddings_path: str = field(default="data/embeddings.pickle")
+    embeddings_save_path: str = field(default="data/embeddings.pickle")

@@ -8,7 +8,7 @@ from sentence_transformers import SentenceTransformer
 
 from configs.config_matcher import MatcherConfig
 from matcher.base_matcher import BaseService
-from utils.get_embbedings import load_embeddings
+from utils.get_embbedings import ManagerEmbbeding
 
 
 class SentenceSimilarity(BaseService):
@@ -29,7 +29,11 @@ class SentenceSimilarity(BaseService):
         """
         self.embedder = SentenceTransformer(config.embedder)
         self.config = config
-        self.local_name_embedings = torch.tensor(load_embeddings(config.embeddings_path)).to("cuda:0")
+        self.manager = ManagerEmbbeding(embbeder=self.config.embedder, 
+                                        data=self.config.dataset_path, 
+                                        name_col=self.config.matcher_col_name, 
+                                        save_path=self.config.embeddings_save_path)
+        self.local_name_embedings = torch.tensor(self.manager.load_embeddings(config.embeddings_path)).to("cuda:0")
         self.data = self.load_data(self.config.dataset_path)
 
 

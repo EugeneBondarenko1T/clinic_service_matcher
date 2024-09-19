@@ -124,12 +124,14 @@ def mapk(actual: List[list], predicted: List[list], k: int=10) -> float:
 def _precision(predicted, actual):
     prec = [value for value in predicted if value in actual]
     prec = float(len(prec)) / float(len(predicted))
+    
     return prec
 
 
 def f1(value_mapk, value_mark):
 
     return 2 * (value_mapk * value_mark) / (value_mark + value_mapk)
+
 
 def get_pivot_table(actual_list, predict_list, top_k):
     results = {'k': [], 'mark': [], 'mapk': [], 'f1_score': []}
