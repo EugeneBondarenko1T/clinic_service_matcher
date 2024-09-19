@@ -8,17 +8,13 @@ from sentence_transformers import SentenceTransformer
 
 from configs.config_matcher import MatcherConfig
 from matcher.base_matcher import BaseService
-from utils.get_embbedings import ManagerEmbbeding
+from utils.get_embbedings import ManagerEmbedding
 
 
 class SentenceSimilarity(BaseService):
     """
     Класс для вычисления косинусной близости и получения топ-5 категорий.
 
-    Attributes_
-        embedder (SentenceTransformer): Модель для кодирования предложений
-        config (MatcherConfig): Объект конфигурации, содержащий параметры для решения задачи мэтчинга
-        local_name_embedings (torch.Tensor): Эмбеддинги для локальных названий услуг
     """
     def __init__(self, config: MatcherConfig = None, train_embeddings: bool = False):
         """
@@ -26,10 +22,11 @@ class SentenceSimilarity(BaseService):
 
         Args_
             config (MatcherConfig): Объект конфигурации, содержащий параметры для решения задачи мэтчинга
+            train_embeddings (bool): Флаг для генерации эмбеддингов
         """
         self.embedder = SentenceTransformer(config.embedder)
         self.config = config
-        self.manager = ManagerEmbbeding(embbeder=self.config.embedder, 
+        self.manager = ManagerEmbedding(embedder=self.config.embedder, 
                                         data_path=self.config.matching_dataset_path, 
                                         name_col=self.config.matcher_col_name, 
                                         save_path=self.config.embeddings_save_path)
@@ -91,7 +88,7 @@ class SentenceSimilarity(BaseService):
 
         Args_
             input_text (str): Входное предложение для поиска схожих услуг
-            top_k (int): Количество top_k результатов для возврата.
+            top_k (int): Количество top_k результатов для возврата
 
         Returns_
             list: Список словарей, где каждый словарь содержит название услуги и ее оценку схожести
