@@ -1,0 +1,9 @@
+data:
+  matching_dataset_path: "data/data_for_matcher.csv"
+  input_dataset_path: "data/data.csv"
+  embedder: "deepvk/USER-bge-m3"
+  matcher_col_name: "local_name"
+  input_col_name: "service_name"
+  embeddings_save_path: "data/embeddings.pickle"
+  embeddings_path: "data/embeddings.pickle"
+  matched_data_save_path: "data/matched_data.csv"
