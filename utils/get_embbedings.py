@@ -15,11 +15,11 @@ class ManagerEmbbeding:
         name_col (str): Название столбца в датасете, содержащего текстовые данные для кодирования
         save_path (str): Путь для сохранения эмбеддингов по пути
     """
-    def __init__(self, embbeder, data: pd.DataFrame, name_col: str, save_path: str):
+    def __init__(self, embbeder, data_path: pd.DataFrame, name_col: str, save_path: str):
         self.embbeder = embbeder
-        self.data = data
         self.name_col = name_col
         self.save_path = save_path
+        self.data = pd.read_csv(data_path)
 
 
     def get_embedings_for_data(self):
@@ -32,8 +32,7 @@ class ManagerEmbbeding:
         Returns_
             None
         """
-
-        embeddings  = self.embedder.encode(sentences=self.data[self.name_col])
+        embeddings  = self.embbeder.encode(self.data[self.name_col])
 
         with open(self.save_path, 'wb') as f:
             pickle.dump(embeddings, f)

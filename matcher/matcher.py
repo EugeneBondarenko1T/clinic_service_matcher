@@ -20,7 +20,7 @@ class SentenceSimilarity(BaseService):
         config (MatcherConfig): Объект конфигурации, содержащий параметры для решения задачи мэтчинга
         local_name_embedings (torch.Tensor): Эмбеддинги для локальных названий услуг
     """
-    def __init__(self, config: MatcherConfig):
+    def __init__(self, config: MatcherConfig = None, train_embeddings: bool = False):
         """
         Инициализация класса SentenceSimilarity.
 
@@ -30,11 +30,14 @@ class SentenceSimilarity(BaseService):
         self.embedder = SentenceTransformer(config.embedder)
         self.config = config
         self.manager = ManagerEmbbeding(embbeder=self.config.embedder, 
-                                        data=self.config.dataset_path, 
+                                        data_path=self.config.matching_dataset_path, 
                                         name_col=self.config.matcher_col_name, 
                                         save_path=self.config.embeddings_save_path)
+        if train_embeddings:
+            self.manager.get_embedings_for_data()
+            
         self.local_name_embedings = torch.tensor(self.manager.load_embeddings(config.embeddings_path)).to("cuda:0")
-        self.data = self.load_data(self.config.dataset_path)
+        self.data = self.load_data(self.config.matching_dataset_path)
 
 
     @staticmethod
@@ -82,7 +85,7 @@ class SentenceSimilarity(BaseService):
         return scores, indices
 
 
-    def get_top_k(self, input_text: str, top_k: int) -> list:
+    def get_top_k(self, input_text: str, top_k: int = 5) -> list:
         """
         Возвращает top_k схожих услуг для входного предложения.
 
