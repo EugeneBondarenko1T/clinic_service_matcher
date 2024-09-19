@@ -5,9 +5,10 @@
 import pandas as pd
 import torch
 from sentence_transformers import SentenceTransformer
+
 from configs.config_matcher import MatcherConfig
-from utils.get_embedings import load_embeddings
 from matcher.base_matcher import BaseService
+from utils.get_embbedings import load_embeddings
 
 
 class SentenceSimilarity(BaseService):

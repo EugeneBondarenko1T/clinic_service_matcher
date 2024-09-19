@@ -1,5 +1,6 @@
-import pandas as pd
 import pickle
+
+import pandas as pd
 from sentence_transformers import SentenceTransformer
 
 data = pd.read_csv("data/data_for_matcher.csv")
