@@ -14,12 +14,12 @@ def match_data():
         yaml_config = yaml.safe_load(file)
         
     config = MatcherConfig(matching_dataset_path=yaml_config['data']['matching_dataset_path'],
-                            input_dataset_path=yaml_config['data']['input_dataset_path'],
-                            embedder=yaml_config['data']['embedder'],
-                            matcher_col_name=yaml_config['data']['matcher_col_name'],
-                            input_col_name=yaml_config['data']['input_col_name'],
-                            embeddings_save_path=yaml_config['data']['embeddings_save_path'],
-                            embeddings_path=yaml_config['data']['embeddings_path'],)
+                           input_dataset_path=yaml_config['data']['input_dataset_path'],
+                           embedder=yaml_config['data']['embedder'],
+                           matcher_col_name=yaml_config['data']['matcher_col_name'],
+                           input_col_name=yaml_config['data']['input_col_name'],
+                           embeddings_save_path=yaml_config['data']['embeddings_save_path'],
+                           embeddings_path=yaml_config['data']['embeddings_path'],)
 
     model = SentenceSimilarity(config=config, train_embeddings=True)
     
