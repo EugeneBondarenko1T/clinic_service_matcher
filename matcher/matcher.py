@@ -24,8 +24,8 @@ class SentenceSimilarity(BaseService):
             config (MatcherConfig): Объект конфигурации, содержащий параметры для решения задачи мэтчинга
             train_embeddings (bool): Флаг для генерации эмбеддингов
         """
-        self.embedder = SentenceTransformer(config.embedder)
         self.config = config
+        self.embedder = SentenceTransformer(config.embedder)
         self.manager = ManagerEmbedding(embedder=self.config.embedder, 
                                         data_path=self.config.matching_dataset_path, 
                                         name_col=self.config.matcher_col_name, 
