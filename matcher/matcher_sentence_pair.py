@@ -172,10 +172,6 @@ class MatcherSentencePairClassification:
         )
         trainer.train()
 
-    @staticmethod
-    def sigmoid(x):
-        return 1 / (1 + np.exp(-x))
-
     def get_top_k(self, question: str, top_k: int):
         model = AutoModelForSequenceClassification.from_pretrained(
             self.training_config.model_checkpoint_trained_model
@@ -196,17 +192,18 @@ class MatcherSentencePairClassification:
             with torch.no_grad():
                 outputs = model(**inputs)
 
-            logits = outputs.logits.cpu().numpy()
-            proba = self.sigmoid(logits)
+            logits = outputs.logits.cpu()
+            proba = torch.sigmoid(logits)
 
             scores.append(proba[0])
 
-        scores = np.array(scores)
+        scores = torch.stack(scores)
 
-        top_k_idx = scores[:, 1].argsort()[::-1][:top_k]
+        top_k_idx = scores[:, 1].argsort(descending=True)[:top_k]
 
         labels = self.dataset[self.matcher_config.context_col_name].unique()[
             top_k_idx]
+
         probabilities = scores[top_k_idx, 1]
 
         output = [{"local_name": label, "probability": prob}
