@@ -8,7 +8,6 @@ class MatcherConfig:
     train_path_save: str = field(default="data/data_for_sentence_pair_classification")
     valid_path_save: str = field(default="data/data_for_sentence_pair_classification")
     model_checkpoint: str = field(default="roberta-base")
-    max_length: int = 128
     num_labels: int = 2
     test_size: float = 0.2
     random_state: int = 42
