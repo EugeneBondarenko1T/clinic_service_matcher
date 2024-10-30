@@ -2,20 +2,20 @@ import pandas as pd
 import random
 import numpy as np
 import torch
-import pickle
 
+from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from datasets import Dataset, DatasetDict, load_dataset
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from evaluate import load
-from configs.parametrs_for_training import ParametersTraining
+from configs.parameters_for_training import ParametersTraining
 
 
 class MatcherSentencePairClassification:
-    def __init__(self, path2dataset: str, tokenizer_name="roberta-base", num_labels=2, config = ParametersTraining):
+    def __init__(self,  path2dataset: str, config: ParametersTraining = None, model_name: str = "roberta-base", num_labels: int = 2):
         self.dataset = self.load_data(path2dataset)
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-        self.model = AutoModelForSequenceClassification.from_pretrained(tokenizer_name, num_labels=num_labels)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=num_labels)
         self.config = config
 
 
@@ -32,15 +32,16 @@ class MatcherSentencePairClassification:
         return f1_metric.compute(predictions=predictions, references=labels)
     
 
-    def get_dataset_with_negative_samples(self, path_save: str, question_col: str, context_col: str, save_dataset: bool = False) -> pd.DataFrame:
-        self.dataset = self.dataset.copy()
-        self.dataset = self.dataset[[question_col, context_col]]
-        self.dataset['label'] = 1
-        existing_pairs = set(zip(self.dataset[question_col], self.dataset[context_col]))
+    def get_dataset_with_negative_samples(self, path_save: str, question_col: str, context_col: str) -> pd.DataFrame:
+        base_dataset = self.dataset
+        base_dataset = base_dataset[[question_col, context_col]]
+        base_dataset['label'] = 1
+
+        existing_pairs = set(zip(base_dataset[question_col], base_dataset[context_col]))
 
         negative_samples = []
-        for name in self.dataset[question_col].unique():
-            locals_name = random.sample(population=list(self.dataset[context_col]), k=5)
+        for name in base_dataset[question_col].unique():
+            locals_name = random.sample(population=list(base_dataset[context_col]), k=5)
             for local_name in locals_name:
                 if (local_name, name) not in existing_pairs:
                     negative_samples.append({context_col: local_name, question_col: name})
@@ -48,19 +49,22 @@ class MatcherSentencePairClassification:
         data_negative = pd.DataFrame(negative_samples)
         data_negative['label'] = 0
 
-        self.data = pd.concat([self.dataset, data_negative], ignore_index=True)
+        self.data = pd.concat([base_dataset, data_negative], ignore_index=True)
         self.data.drop_duplicates(subset=[context_col, question_col], inplace=True)
 
-        if save_dataset:
+        if path_save:
             self.data.to_csv(f"{path_save}.csv", index=False)
 
         return self.data
 
 
-    def get_dict_for_training(self, test_size: float, random_state: int, save_path: str = None) -> DatasetDict:
-        train, valid = train_test_split(self.data, test_size=test_size, random_state=random_state)
+    def get_dict_for_training(self, test_size: float, random_state: int, save_path: str = None, path_data: str = None) -> DatasetDict:
         
-        self.dataset = DatasetDict({
+        data = self.load_data(path=path_data) if path_data else self.data
+
+        train, valid = train_test_split(data, test_size=test_size, random_state=random_state)
+        
+        dataset_dict = DatasetDict({
             'train': Dataset.from_pandas(train),
             'validation': Dataset.from_pandas(valid),
         })
@@ -69,11 +73,11 @@ class MatcherSentencePairClassification:
             train.to_json(f"{save_path}/train.jsonl", orient="records", lines=True)
             valid.to_json(f"{save_path}/valid.jsonl", orient="records", lines=True)
 
-        return self.dataset
+        return dataset_dict
     
     
     def tokenize_function(self, batch):
-        return self.tokenizer(batch["local_name"], batch["service_name"], truncation=True, padding="max_length")
+        return self.tokenizer(batch["local_name"], batch["service_name"], truncation=True, padding="max_length", max_length=128)
     
 
     def get_tokenized_dataset(self, data_files: dict) -> DatasetDict:
@@ -110,44 +114,42 @@ class MatcherSentencePairClassification:
             trainer.train()
 
 
-    def load_model(self, path2model):
-        self.model = AutoModelForSequenceClassification.from_pretrained(path2model)
+    def load_trained_model(self, path2model):
+        self.model = AutoModelForSequenceClassification.from_pretrained(path2model).to("cuda:0")
 
-
-    def tokenizer_func(self, text):
-        return self.tokenizer(text, truncation=True, padding="max_length")
-
-    def get_embeddings(self):
-        embeddings = self.data['local_name'].apply(self.tokenizer_func)
-
-        with open("data/data_for_sentence_pair_classification/embeddings_local_name.pkl", "wb") as f:
-            pickle.dump(embeddings, f)
-
-        return embeddings
-
-
-    def predict_inf(self, question: str, context: str) -> int:
-        inputs = self.tokenizer(question,
-                                context,
-                                truncation=True,
-                                padding="max_length",
-                                return_tensors="pt")
-        
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-
-        logits = outputs.logits
-        predicted_label = torch.argmax(logits, dim=-1).item()
-
-        return predicted_label
-    
 
     @staticmethod
     def sigmoid(x):
         return 1 / (1 + np.exp(-x))
+    
+    
+    def get_top_k(self, question: str, top_k: int):
+        scores = []
 
+        for col in tqdm(self.data['local_name'].unique()):
+            inputs = self.tokenizer(question,
+                                    col,
+                                    truncation=True,
+                                    padding="max_length",
+                                    max_length=64,
+                                    return_tensors="pt").to("cuda:0")
+            
+            with torch.no_grad():
+                outputs = self.model(**inputs)
 
-    def get_top_k(self, question: str, top_k: int = 5):
-        with open("data/data_for_sentence_pair_classification/embeddings_local_name.pkl", "rb") as f:
-            embeddings = pickle.load(f)
+            logits = outputs.logits.cpu().numpy()
+            proba = self.sigmoid(logits)
+
+            scores.append(proba)
         
+        scores = np.array(scores)
+        scores = scores.reshape(scores.shape[0], scores.shape[-1])
+       
+        top_k_idx = scores[:, 1].argsort()[::-1][:top_k]
+        
+        labels = self.data['local_name'].unique()[top_k_idx]
+        probabilities = scores[top_k_idx, 1]
+
+        output = {label: prob for label, prob in zip(labels, probabilities)}
+
+        return output     
