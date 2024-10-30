@@ -131,7 +131,7 @@ class MatcherSentencePairClassification:
                                     col,
                                     truncation=True,
                                     padding="max_length",
-                                    max_length=64,
+                                    max_length=128,
                                     return_tensors="pt").to("cuda:0")
             
             with torch.no_grad():
