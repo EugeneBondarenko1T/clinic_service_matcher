@@ -1,19 +1,21 @@
-import pandas as pd
 import random
+
 import numpy as np
+import pandas as pd
 import torch
-from tqdm import tqdm
-from sklearn.model_selection import train_test_split
 from datasets import Dataset, DatasetDict
+from evaluate import load
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 from transformers import (
-    AutoTokenizer,
     AutoModelForSequenceClassification,
+    AutoTokenizer,
     Trainer,
     TrainingArguments,
 )
-from evaluate import load
-from configs.parameters_for_training import ParametersTraining
+
 from configs.config_matcher_sentence_pair import MatcherConfig
+from configs.parameters_for_training import ParametersTraining
 
 
 class MatcherSentencePairClassification:
@@ -201,12 +203,13 @@ class MatcherSentencePairClassification:
 
         top_k_idx = scores[:, 1].argsort(descending=True)[:top_k]
 
-        labels = self.dataset[self.matcher_config.context_col_name].unique()[
-            top_k_idx]
+        labels = self.dataset[self.matcher_config.context_col_name].unique()[top_k_idx]
 
         probabilities = scores[top_k_idx, 1]
 
-        output = [{"local_name": label, "probability": prob}
-                  for label, prob in zip(labels.tolist(), probabilities.tolist())]
+        output = [
+            {"local_name": label, "probability": prob}
+            for label, prob in zip(labels.tolist(), probabilities.tolist())
+        ]
 
         return output
