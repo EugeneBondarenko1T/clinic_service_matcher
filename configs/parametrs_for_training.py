@@ -1,4 +1,4 @@
-class ParametrsTraining:
+class ParametersTraining:
     output_dir: str = "./results"
     num_train_epochs: int = 1
     per_device_train_batch_size: int = 32

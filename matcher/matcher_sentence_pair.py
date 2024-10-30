@@ -1,16 +1,18 @@
 import pandas as pd
 import random
 import numpy as np
+import torch
+import pickle
 
 from sklearn.model_selection import train_test_split
 from datasets import Dataset, DatasetDict, load_dataset
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from evaluate import load
-from configs.parametrs_for_training import ParametrsTraining
+from configs.parametrs_for_training import ParametersTraining
 
 
 class MatcherSentencePairClassification:
-    def __init__(self, path2dataset: str, tokenizer_name="roberta-base", num_labels=2, config = ParametrsTraining):
+    def __init__(self, path2dataset: str, tokenizer_name="roberta-base", num_labels=2, config = ParametersTraining):
         self.dataset = self.load_data(path2dataset)
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(tokenizer_name, num_labels=num_labels)
@@ -20,6 +22,14 @@ class MatcherSentencePairClassification:
     @staticmethod
     def load_data(path: str) -> pd.DataFrame:
         return pd.read_csv(path)
+    
+
+    @staticmethod
+    def compute_metrics(eval_pred):
+        f1_metric = load("f1")
+        logits, labels = eval_pred
+        predictions = np.argmax(logits, axis=-1)
+        return f1_metric.compute(predictions=predictions, references=labels)
     
 
     def get_dataset_with_negative_samples(self, path_save: str, question_col: str, context_col: str, save_dataset: bool = False) -> pd.DataFrame:
@@ -33,7 +43,7 @@ class MatcherSentencePairClassification:
             locals_name = random.sample(population=list(self.dataset[context_col]), k=5)
             for local_name in locals_name:
                 if (local_name, name) not in existing_pairs:
-                    negative_samples.append({question_col: local_name, context_col: name})
+                    negative_samples.append({context_col: local_name, question_col: name})
 
         data_negative = pd.DataFrame(negative_samples)
         data_negative['label'] = 0
@@ -100,9 +110,44 @@ class MatcherSentencePairClassification:
             trainer.train()
 
 
+    def load_model(self, path2model):
+        self.model = AutoModelForSequenceClassification.from_pretrained(path2model)
+
+
+    def tokenizer_func(self, text):
+        return self.tokenizer(text, truncation=True, padding="max_length")
+
+    def get_embeddings(self):
+        embeddings = self.data['local_name'].apply(self.tokenizer_func)
+
+        with open("data/data_for_sentence_pair_classification/embeddings_local_name.pkl", "wb") as f:
+            pickle.dump(embeddings, f)
+
+        return embeddings
+
+
+    def predict_inf(self, question: str, context: str) -> int:
+        inputs = self.tokenizer(question,
+                                context,
+                                truncation=True,
+                                padding="max_length",
+                                return_tensors="pt")
+        
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        logits = outputs.logits
+        predicted_label = torch.argmax(logits, dim=-1).item()
+
+        return predicted_label
+    
+
     @staticmethod
-    def compute_metrics(eval_pred):
-        f1_metric = load("f1")
-        logits, labels = eval_pred
-        predictions = np.argmax(logits, axis=-1)
-        return f1_metric.compute(predictions=predictions, references=labels)
+    def sigmoid(x):
+        return 1 / (1 + np.exp(-x))
+
+
+    def get_top_k(self, question: str, top_k: int = 5):
+        with open("data/data_for_sentence_pair_classification/embeddings_local_name.pkl", "rb") as f:
+            embeddings = pickle.load(f)
+        
