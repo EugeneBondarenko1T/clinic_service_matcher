@@ -12,8 +12,8 @@ from configs.parameters_for_training import ParametersTraining
 
 
 class MatcherSentencePairClassification:
-    def __init__(self,  path2dataset: str, config: ParametersTraining = None, model_name: str = "roberta-base", num_labels: int = 2):
-        self.dataset = self.load_data(path2dataset)
+    def __init__(self,  path_data: str, config: ParametersTraining = None, model_name: str = "roberta-base", num_labels: int = 2):
+        self.dataset = self.load_data(path_data)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=num_labels)
         self.config = config
