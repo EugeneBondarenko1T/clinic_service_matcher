@@ -5,7 +5,9 @@ import pandas as pd
 import torch
 from datasets import Dataset, DatasetDict
 from evaluate import load
+from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 from transformers import (
     AutoModelForSequenceClassification,
@@ -32,6 +34,7 @@ class MatcherSentencePairClassification:
             self.matcher_config.model_checkpoint,
             num_labels=self.matcher_config.num_labels,
         )
+        self.trained_model = None
 
     @staticmethod
     def load_data(path: str) -> pd.DataFrame:
@@ -175,9 +178,11 @@ class MatcherSentencePairClassification:
         trainer.train()
 
     def get_top_k(self, question: str, top_k: int):
-        model = AutoModelForSequenceClassification.from_pretrained(
-            self.training_config.model_checkpoint_trained_model
-        ).to(self.training_config.device)
+
+        if self.trained_model is None:
+            model = AutoModelForSequenceClassification.from_pretrained(
+                self.training_config.model_checkpoint_trained_model
+            ).to(self.training_config.device)
 
         scores = []
 
@@ -206,6 +211,66 @@ class MatcherSentencePairClassification:
         labels = self.dataset[self.matcher_config.context_col_name].unique()[top_k_idx]
 
         probabilities = scores[top_k_idx, 1]
+
+        output = [
+            {"local_name": label, "probability": prob}
+            for label, prob in zip(labels.tolist(), probabilities.tolist())
+        ]
+
+        return output
+
+    def get_top_k_batch(self, question: str, top_k: int, batch_size: int = 32):
+        if self.trained_model is None:
+            model = AutoModelForSequenceClassification.from_pretrained(
+                self.training_config.model_checkpoint_trained_model
+            ).to(self.training_config.device)
+            model.eval()
+
+        unique_contexts = self.dataset[self.matcher_config.context_col_name].unique()
+
+        inputs = [
+            self.tokenizer(
+                question,
+                context,
+                truncation=True,
+                padding="max_length",
+                max_length=self.training_config.max_length,
+                return_tensors="pt",
+            )
+            for context in unique_contexts
+        ]
+
+        input_idx = torch.cat([idx["input_ids"] for idx in inputs], dim=0)
+        attention_mask = torch.cat([mask["attention_mask"] for mask in inputs], dim=0)
+
+        dataset = TensorDataset(input_idx, attention_mask)
+        dataloader = DataLoader(dataset, batch_size=batch_size)
+
+        scores = []
+
+        with torch.no_grad():
+            for batch in tqdm(dataloader):
+                batch_input_ids, batch_attention_mask = batch
+                batch_input_ids = batch_input_ids.to(self.training_config.device)
+                batch_attention_mask = batch_attention_mask.to(
+                    self.training_config.device
+                )
+
+                outputs = model(
+                    input_ids=batch_input_ids, attention_mask=batch_attention_mask
+                )
+
+                logits = outputs.logits.cpu()
+                proba = torch.sigmoid(logits)
+
+                scores.extend(proba[:, 1].tolist())
+
+        scores = torch.tensor(scores)
+
+        top_k_idx = scores.argsort(descending=True)[:top_k]
+
+        labels = unique_contexts[top_k_idx]
+        probabilities = scores[top_k_idx]
 
         output = [
             {"local_name": label, "probability": prob}
